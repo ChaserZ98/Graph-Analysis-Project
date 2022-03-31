@@ -44,7 +44,7 @@ See `LICENSE` for more information.
 
 ## Contact
 
-Animesh Arma - [email](mailto:)
+Animesh Sharma - [email](mailto:)
 
 Feiyu Zheng - [feiyuzheng98@gmail.com](mailto:feiyuzheng98@gmail.com)
 
