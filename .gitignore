@@ -272,3 +272,4 @@ fabric.properties
 
 # ignore files in project
 *.zip
+latex_template/
