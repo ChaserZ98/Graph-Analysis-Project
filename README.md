@@ -1,22 +1,22 @@
 <div id="top"></div>
 
-[![commits](https://badgen.net/github/commits/ChaserZ98/Graph-Analysis-Project/main)](https://GitHub.com/ChaserZ98/Graph-Analysis-Project/graphs/commit-activity)
-[![forks](https://badgen.net/github/forks/ChaserZ98/Graph-Analysis-Project)](https://GitHub.com/ChaserZ98/Graph-Analysis-Project/network/members)
-[![stars](https://badgen.net/github/stars/ChaserZ98/Graph-Analysis-Project)](https://GitHub.com/ChaserZ98/Graph-Analysis-Project/stargazers)
-[![issues](https://badgen.net/github/issues/ChaserZ98/Graph-Analysis-Project)](https://GitHub.com/ChaserZ98/Graph-Analysis-Project/issues/)
+[![commits](https://badgen.net/github/commits/ChaserZ98/Recommender-System-Project/main)](https://GitHub.com/ChaserZ98/Recommender-System-Project/graphs/commit-activity)
+[![forks](https://badgen.net/github/forks/ChaserZ98/Recommender-System-Project)](https://GitHub.com/ChaserZ98/Recommender-System-Project/network/members)
+[![stars](https://badgen.net/github/stars/ChaserZ98/Recommender-System-Project)](https://GitHub.com/ChaserZ98/Recommender-System-Project/stargazers)
+[![issues](https://badgen.net/github/issues/ChaserZ98/Recommender-System-Project)](https://GitHub.com/ChaserZ98/Recommender-System-Project/issues/)
 [![MIT license](https://img.shields.io/badge/License-MIT-blue.svg)](https://lbesson.mit-license.org/)
 
 <div align="center">
-  <h1 align="center">Graph Analysis Project</h1>
+  <h1 align="center">Recommender System Project</h1>
   <p align="center">
-    <a href="https://GitHub.com/ChaserZ98/Graph-Analysis-Project"><strong>Explore the docs »</strong></a>
+    <a href="https://GitHub.com/ChaserZ98/Recommender-System-Project"><strong>Explore the docs »</strong></a>
     <br />
     <br />
-    <a href="https://GitHub.com/ChaserZ98/Graph-Analysis-Project">View Demo</a>
+    <a href="https://GitHub.com/ChaserZ98/Recommender-System-Project">View Demo</a>
     ·
-    <a href="https://GitHub.com/ChaserZ98/Graph-Analysis-Project/issues">Report Bug</a>
+    <a href="https://GitHub.com/ChaserZ98/Recommender-System-Project/issues">Report Bug</a>
     ·
-    <a href="https://GitHub.com/ChaserZ98/Graph-Analysis-Project/issues">Request Feature</a>
+    <a href="https://GitHub.com/ChaserZ98/Recommender-System-Project/issues">Request Feature</a>
   </p>
 </div>
 
@@ -50,6 +50,6 @@ Feiyu Zheng - [feiyuzheng98@gmail.com](mailto:feiyuzheng98@gmail.com)
 
 Wanying Mo - [wm318@rutgers.edu](mailto:wm318@rutgers.edu)
 
-Project Link: [https://github.com/ChaserZ98/Graph-Analysis-Project](https://github.com/ChaserZ98/Graph-Analysis-Project)
+Project Link: [https://github.com/ChaserZ98/Recommender-System-Project](https://github.com/ChaserZ98/Recommender-System-Project)
 
 <p align="right">(<a href="#top">back to top</a>)</p>
