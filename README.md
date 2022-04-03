@@ -25,6 +25,9 @@
   <ol>
     <li>
       <a href="#about-the-project">About The Project</a>
+      <ul>
+        <li><a href="#data-source">Data Source</a></li>
+      </ul>
     </li>
     <li><a href="#license">License</a></li>
     <li><a href="#contact">Contact</a></li>
@@ -36,6 +39,10 @@
 This is a course project of Rutgers CS550 Massive Data Mining.
 
 
+### Data Source
+[Amazon Review Data (2018), Jianmo Ni, UCSD](https://nijianmo.github.io/amazon/index.html)
+
+
 ## License
 
 Distributed under the MIT License.
@@ -44,12 +51,15 @@ See `LICENSE` for more information.
 
 ## Contact
 
-Animesh Sharma - [email](mailto:)
+Animesh Sharma - [animesharma08+github@gmail.com](mailto:animesharma08+github@gmail.com)
 
 Feiyu Zheng - [feiyuzheng98@gmail.com](mailto:feiyuzheng98@gmail.com)
 
 Wanying Mo - [wm318@rutgers.edu](mailto:wm318@rutgers.edu)
 
 Project Link: [https://github.com/ChaserZ98/Recommender-System-Project](https://github.com/ChaserZ98/Recommender-System-Project)
+
+## References
+* Jianmo Ni, Jiacheng Li, Julian McAuley. 2019. [**Justifying recommendations using distantly-labeled reviews and fined-grained aspects**](https://cseweb.ucsd.edu//~jmcauley/pdfs/emnlp19a.pdf). Empirical Methods in Natural Language Processing (EMNLP)
 
 <p align="right">(<a href="#top">back to top</a>)</p>
