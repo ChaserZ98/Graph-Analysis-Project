@@ -273,3 +273,6 @@ fabric.properties
 # ignore files in project
 *.zip
 latex_template/
+
+# ignore the Data folder
+Data/
