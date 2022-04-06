@@ -39,7 +39,7 @@ def splitDataset(dataPath:str, totalSize:int, selectedKeys:list, outputPath:str,
             csvWriter = csv.writer(outputFile, selectedKeys)
             csvWriter.writerow(selectedKeys) # write header
             with tqdm(total=totalSize, desc="Processing", unit_scale=True) as pbar:
-                for row in pool.imap(worker, file, chunkSize):
+                for row in pool.imap(splitWorker, file, chunkSize):
                     csvWriter.writerow(row)
                     pbar.update()
     pool.close()
