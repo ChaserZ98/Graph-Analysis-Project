@@ -52,7 +52,7 @@ if __name__ == '__main__':
     processNum = 16 # number of processes (customize this variable based on different CPUs)
     chunkSize = 1024 # the size of each chunk splitted from the iterable
     try:
-        main(dataPath, totalSize, selectedKeys, outputPath, processNum=16, chunkSize=1024)
+        splitDataset(dataPath, totalSize, selectedKeys, outputPath, processNum=16, chunkSize=1024)
     except Exception as e:
         print(e)
         exit()
