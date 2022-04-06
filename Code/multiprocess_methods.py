@@ -7,7 +7,7 @@ import csv
 
 selectedKeys = []
 
-def worker(line):
+def splitWorker(line):
     row = json.loads(line)
     return [row.get(key) for key in selectedKeys]
 
