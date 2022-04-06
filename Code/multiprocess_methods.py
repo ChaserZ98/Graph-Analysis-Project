@@ -1,4 +1,4 @@
-from multiprocessing import Pool
+from multiprocessing import Pool, cpu_count
 from tkinter import W
 from tqdm import tqdm
 import numpy as np
@@ -9,9 +9,9 @@ selectedKeys = []
 
 def splitWorker(line):
     row = json.loads(line)
-    return [row.get(key,"") for key in selectedKeys]
+    return [row.get(key) for key in selectedKeys]
 
-def splitDataset(dataPath:str, totalSize:int, selectedKeys:list, outputPath:str, processNum:int = 16, chunkSize:int = 1024, printParameters:bool = False):
+def splitDataset(dataPath:str, totalSize:int, selectedKeys:list, outputPath:str, processNum:int = cpu_count(), chunkSize:int = 1024, printParameters:bool = False):
     """
     multiprocess split function
 
@@ -20,7 +20,7 @@ def splitDataset(dataPath:str, totalSize:int, selectedKeys:list, outputPath:str,
         totalSize (int): total size of original dataset
         selectedKeys (list): a list containing selected keys
         outputPath (str): output dataset path
-        processNum (int, optional): number of sub-processes. Defaults to 16.
+        processNum (int, optional): number of sub-processes. Defaults to cpu_count().
         chunkSize (int, optional): the size of each chunk splitted from the iterable. Defaults to 1024.
         printParameters (bool, optional): show the parameters or not. Defaults to False.
     """
@@ -49,10 +49,10 @@ if __name__ == '__main__':
     dataPath = "Data/All_Amazon_Review_5.json"
     totalSize = 157260921
     outputPath = "Data/test.csv"
-    processNum = 16 # number of processes (customize this variable based on different CPUs)
+    processNum = cpu_count() # number of processes (customize this variable based on different CPUs)
     chunkSize = 1024 # the size of each chunk splitted from the iterable
     try:
-        splitDataset(dataPath, totalSize, selectedKeys, outputPath, processNum=16, chunkSize=1024)
+        splitDataset(dataPath, totalSize, selectedKeys, outputPath, processNum, chunkSize)
     except Exception as e:
         print(e)
         exit()
