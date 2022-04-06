@@ -1,11 +1,7 @@
-from concurrent.futures import process
-import math
 from multiprocessing import Pool
 from tkinter import W
 from tqdm import tqdm
 import numpy as np
-import time
-import test
 import json
 import csv
 
@@ -15,8 +11,9 @@ def worker(line):
     row = json.loads(line)
     return [row.get(key) for key in selectedKeys]
 
-def main(dataPath:str, totalSize:int, selectedKeys:list, outputPath:str, processNum:int = 16, chunkSize:int = 1024, printParameters:bool = False):
-    """multiprocess split function
+def splitDataset(dataPath:str, totalSize:int, selectedKeys:list, outputPath:str, processNum:int = 16, chunkSize:int = 1024, printParameters:bool = False):
+    """
+    multiprocess split function
 
     Args:
         dataPath (str): original dataset path
