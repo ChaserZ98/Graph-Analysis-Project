@@ -9,7 +9,7 @@ selectedKeys = []
 
 def splitWorker(line):
     row = json.loads(line)
-    return [row.get(key) for key in selectedKeys]
+    return [row.get(key,"") for key in selectedKeys]
 
 def splitDataset(dataPath:str, totalSize:int, selectedKeys:list, outputPath:str, processNum:int = 16, chunkSize:int = 1024, printParameters:bool = False):
     """
