@@ -1,11 +1,13 @@
 from multiprocessing import Pool, cpu_count
-from tkinter import W
 from tqdm import tqdm
 import numpy as np
 import json
 import csv
+import random
 
-selectedKeys = []
+def splitWorkerInitializer(l):
+    global selectedKeys
+    selectedKeys = l
 
 def splitWorker(line):
     row = json.loads(line)
@@ -33,7 +35,7 @@ def splitDataset(dataPath:str, totalSize:int, selectedKeys:list, outputPath:str,
         print(f"Number of processes: {processNum}")
         print(f"Size of each chunk: {chunkSize}")
     
-    pool = Pool(processNum)
+    pool = Pool(processNum, splitWorkerInitializer, (selectedKeys,))
     with open(dataPath, 'r', encoding="utf-8") as file:
         with open(outputPath, 'w', newline='') as outputFile:
             csvWriter = csv.writer(outputFile, selectedKeys)
@@ -46,13 +48,26 @@ def splitDataset(dataPath:str, totalSize:int, selectedKeys:list, outputPath:str,
     pool.join()
 
 if __name__ == '__main__':
+    # input_csv_path = "Data/All_Amazon_Review_User_Item_Rating.csv"
+    # output_csv_path = "Data/test.csv"
+    # total_records = 157260921
+    # required_records = 2500000
+    # processNum = cpu_count()
+    # chunkSize = 1024
+    # try:
+    #     sampleDataset(input_csv_path, total_records, output_csv_path, required_records, processNum, chunkSize, True)
+    # except Exception as e:
+    #     print(e)
+    #     exit()
+    # print(selectedKeys)
+    selectedKeys = ['reviewerID', 'asin', 'overall']
     dataPath = "Data/All_Amazon_Review_5.json"
     totalSize = 157260921
     outputPath = "Data/test.csv"
     processNum = cpu_count() # number of processes (customize this variable based on different CPUs)
     chunkSize = 1024 # the size of each chunk splitted from the iterable
     try:
-        splitDataset(dataPath, totalSize, selectedKeys, outputPath, processNum, chunkSize)
+        splitDataset(dataPath, totalSize, selectedKeys, outputPath, processNum, chunkSize, True)
     except Exception as e:
         print(e)
         exit()
