@@ -44,7 +44,7 @@ class my_SVD:
 
         if X_val is not None:
             X_val = self._preprocess_data(X_val, train=False, verbose=False)
-            self._init_metrics()
+        self._init_metrics()
 
         
         # self.userMean = 
@@ -155,15 +155,29 @@ class my_SVD:
                                    self.metrics_.loc[epoch_ix, 'Loss'],
                                    self.metrics_.loc[epoch_ix, 'RMSE'],
                                    self.metrics_.loc[epoch_ix, 'MAE'])
-
                 if self.early_stopping:
                     val_rmse = self.metrics_['RMSE'].tolist()
                     if self._early_stopping(val_rmse, epoch_ix,
                                             self.min_delta):
                         break
-
             else:
-                self._on_epoch_end(start)
+                self.metrics_.loc[epoch_ix, :] = _compute_val_metrics(
+                    X,
+                    bu_k1, bu_c, bi_k1, bi_c, pu, qi,
+                    self.global_mean_,
+                    self.n_factors
+                )
+                self._on_epoch_end(
+                    start,
+                    self.metrics_.loc[epoch_ix, 'Loss'],
+                    self.metrics_.loc[epoch_ix, 'RMSE'],
+                    self.metrics_.loc[epoch_ix, 'MAE']
+                )
+                if self.early_stopping:
+                    val_rmse = self.metrics_['RMSE'].tolist()
+                    if self._early_stopping(val_rmse, epoch_ix,
+                                            self.min_delta):
+                        break
 
         self.bu_k1_ = bu_k1
         self.bu_c_ = bu_c
