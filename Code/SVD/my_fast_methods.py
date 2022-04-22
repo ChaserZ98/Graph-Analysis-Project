@@ -120,10 +120,10 @@ def _run_epoch(X, bu_k1, bu_c, bi_k1, bi_c, pu, qi, global_mean, n_factors, lr, 
 
         # Update biases
         bu_k1[user] += lr * (err * user_means - reg * bu_k1[user])
-        bu_c += lr * (err - reg * bu_c[user])
+        bu_c[user] += lr * (err - reg * bu_c[user])
 
         bi_k1[item] += lr * (err * item_means - reg * bi_k1[item])
-        bi_c += lr * (err - reg * bi_c[item])
+        bi_c[item] += lr * (err - reg * bi_c[item])
 
         # Update latent factors
         for factor in range(n_factors):

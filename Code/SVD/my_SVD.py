@@ -190,7 +190,7 @@ class my_SVD:
         """
         return [
             self.predict_pair(u_id, i_id, clip)
-            for u_id, i_id in zip(X['u_id'], X['i_id'])
+            for u_id, i_id in zip(X.iloc[:, 0], X.iloc[:, 1])
         ]
     
     def predict_pair(self, u_id, i_id, clip=True):
