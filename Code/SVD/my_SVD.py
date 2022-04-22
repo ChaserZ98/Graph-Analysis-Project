@@ -115,8 +115,8 @@ class my_SVD:
         return X.iloc[:, 0:5].values
 
     def _init_metrics(self):
-        metrics = np.zeros((self.n_epochs, 3), dtype=float)
-        self.metrics_ = pd.DataFrame(metrics, columns=['Loss', 'RMSE', 'MAE'])
+        metrics = np.zeros((self.n_epochs, 6), dtype=float)
+        self.metrics_ = pd.DataFrame(metrics, columns=['Train Loss', 'Train RMSE', 'Train MAE', 'Valid loss', 'Valid RMSE', 'Valid MAE'])
 
     # todo
     def _run_sgd(self, X, X_val):
@@ -144,39 +144,49 @@ class my_SVD:
 
             bu_k1, bu_c, bi_k1, bi_c, pu, qi = _run_epoch(X, bu_k1, bu_c, bi_k1, bi_c, pu, qi, self.global_mean_,
                                         self.n_factors, self.lr, self.reg)
-
+            
+            self.metrics_.loc[epoch_ix, ['Train Loss', 'Train RMSE', 'Train MAE']] = _compute_val_metrics(
+                X,
+                bu_k1, bu_c, bi_k1, bi_c, pu, qi,
+                self.global_mean_,
+                self.n_factors
+            )
+            
             if X_val is not None:
-                self.metrics_.loc[epoch_ix, :] = _compute_val_metrics(
-                                                     X_val, bu_k1, bu_c, bi_k1, bi_c, pu, qi,
-                                                     self.global_mean_,
-                                                     self.n_factors
-                                                 )
-                self._on_epoch_end(start,
-                                   self.metrics_.loc[epoch_ix, 'Loss'],
-                                   self.metrics_.loc[epoch_ix, 'RMSE'],
-                                   self.metrics_.loc[epoch_ix, 'MAE'])
-                if self.early_stopping:
-                    val_rmse = self.metrics_['RMSE'].tolist()
-                    if self._early_stopping(val_rmse, epoch_ix,
-                                            self.min_delta):
-                        break
-            else:
-                self.metrics_.loc[epoch_ix, :] = _compute_val_metrics(
-                    X,
+                self.metrics_.loc[epoch_ix, ['Valid Loss', 'Valid RMSE', 'Valid MAE']] = _compute_val_metrics(
+                    X_val,
                     bu_k1, bu_c, bi_k1, bi_c, pu, qi,
                     self.global_mean_,
                     self.n_factors
                 )
                 self._on_epoch_end(
                     start,
-                    self.metrics_.loc[epoch_ix, 'Loss'],
-                    self.metrics_.loc[epoch_ix, 'RMSE'],
-                    self.metrics_.loc[epoch_ix, 'MAE']
+                    train_loss=self.metrics_.loc[epoch_ix, 'Train Loss'],
+                    train_rmse=self.metrics_.loc[epoch_ix, 'Train RMSE'],
+                    train_mae=self.metrics_.loc[epoch_ix, 'Train MAE'],
+                    val_loss=self.metrics_.loc[epoch_ix, 'Valid Loss'],
+                    val_rmse=self.metrics_.loc[epoch_ix, 'Valid RMSE'],
+                    val_mae=self.metrics_.loc[epoch_ix, 'Valid MAE']
                 )
-                if self.early_stopping:
-                    val_rmse = self.metrics_['RMSE'].tolist()
-                    if self._early_stopping(val_rmse, epoch_ix,
-                                            self.min_delta):
+            else:
+                self._on_epoch_end(
+                    start,
+                    train_loss=self.metrics_.loc[epoch_ix, 'Train Loss'],
+                    train_rmse=self.metrics_.loc[epoch_ix, 'Train RMSE'],
+                    train_mae=self.metrics_.loc[epoch_ix, 'Train MAE']
+                )
+
+            
+            
+            # Early stopping
+            if self.early_stopping:
+                if X_val is not None:
+                    val_rmse = self.metrics_['Valid RMSE'].tolist()
+                    if self._early_stopping(epoch_ix, self.min_delta, val_rmse=val_rmse):
+                        break
+                else:
+                    train_rmse = self.metrics_['Train RMSE'].tolist()
+                    if self._early_stopping(epoch_ix, self.min_delta, train_rmse=train_rmse):
                         break
 
         self.bu_k1_ = bu_k1
@@ -231,13 +241,13 @@ class my_SVD:
             user_known = True
             u_ix = self.user_mapping_[u_id]
             u_mean = self.user_means_mapping_[u_ix]
-            pred += self.bu_k1_[u_ix] * u_mean + self.bu_c_[u_ix]
+            pred += self.bu_k1_[u_ix] * (u_mean - self.global_mean_) + self.bu_c_[u_ix]
 
         if i_id in self.item_mapping_:
             item_known = True
             i_ix = self.item_mapping_[i_id]
             i_mean = self.item_means_mapping_[i_ix]
-            pred += self.bi_k1_[i_ix] * i_mean + self.bi_c_[i_ix]
+            pred += self.bi_k1_[i_ix] * (i_mean - self.global_mean_) + self.bi_c_[i_ix]
 
         if user_known and item_known:
             pred += np.dot(self.pu_[u_ix], self.qi_[i_ix])
@@ -248,7 +258,7 @@ class my_SVD:
 
         return pred
 
-    def _early_stopping(self, val_rmse, epoch_idx, min_delta):
+    def _early_stopping(self, epoch_idx, min_delta, train_rmse=None, val_rmse=None):
         """Returns True if validation rmse is not improving.
 
         Last rmse (plus `min_delta`) is compared with the second to last.
@@ -266,9 +276,14 @@ class my_SVD:
             Whether to stop training or not.
         """
         if epoch_idx > 0:
-            if val_rmse[epoch_idx] + min_delta > val_rmse[epoch_idx-1]:
-                self.metrics_ = self.metrics_.loc[:(epoch_idx+1), :]
-                return True
+            if val_rmse is not None:
+                if val_rmse[epoch_idx] + min_delta > val_rmse[epoch_idx - 1]:
+                    self.metrics_ = self.metrics_.loc[:(epoch_idx + 1), :]
+                    return True
+            else:
+                if train_rmse[epoch_idx] + min_delta > train_rmse[epoch_idx - 1]:
+                    self.metrics_ = self.metrics_.loc[:(epoch_idx + 1), :]
+                    return True
         return False
     
     def _on_epoch_begin(self, epoch_ix):
@@ -290,7 +305,7 @@ class my_SVD:
 
         return start
     
-    def _on_epoch_end(self, start, val_loss=None, val_rmse=None, val_mae=None):
+    def _on_epoch_end(self, start, train_loss=None, train_rmse=None, train_mae=None, val_loss=None, val_rmse=None, val_mae=None):
         """Displays epoch ending log.
 
         If self.verbose, computes and displays validation metrics (loss, rmse,
@@ -309,9 +324,17 @@ class my_SVD:
         """
         end = time.time()
 
+        if train_loss is not None:
+            print(f'train_loss: {train_loss:.3f}', end=' - ')
+            print(f'train_rmse: {train_rmse:.3f}', end=' - ')
+            print(f'train_mae: {train_mae:.3f}', end=' - ')
+            print()
+
         if val_loss is not None:
-            print(f'val_loss: {val_loss:.2f}', end=' - ')
-            print(f'val_rmse: {val_rmse:.2f}', end=' - ')
-            print(f'val_mae: {val_mae:.2f}', end=' - ')
+            print(f'val_loss: {val_loss:.3f}', end=' - ')
+            print(f'val_rmse: {val_rmse:.3f}', end=' - ')
+            print(f'val_mae: {val_mae:.3f}', end=' - ')
+            print()
+        
 
         print(f'took {end - start:.1f} sec')

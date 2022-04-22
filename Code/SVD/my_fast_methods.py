@@ -109,10 +109,10 @@ def _run_epoch(X, bu_k1, bu_c, bi_k1, bi_c, pu, qi, global_mean, n_factors, lr, 
         Item latent factors matrix.
     """
     for i in range(X.shape[0]):
-        user, item, rating, user_means, item_means = int(X[i, 0]), int(X[i, 1]), X[i, 2], X[i, 3], X[i, 4]
+        user, item, rating, user_mean, item_mean = int(X[i, 0]), int(X[i, 1]), X[i, 2], X[i, 3], X[i, 4]
 
         # Predict current rating
-        pred = global_mean + bu_k1[user] * (user_means - global_mean) + bu_c[user] + bi_k1[item] * (item_means - global_mean) + bi_c[item]
+        pred = global_mean + bu_k1[user] * (user_mean - global_mean) + bu_c[user] + bi_k1[item] * (item_mean - global_mean) + bi_c[item]
 
         for factor in range(n_factors):
             pred += pu[user, factor] * qi[item, factor]
@@ -120,10 +120,10 @@ def _run_epoch(X, bu_k1, bu_c, bi_k1, bi_c, pu, qi, global_mean, n_factors, lr, 
         err = rating - pred
 
         # Update biases
-        bu_k1[user] += lr * (err * (user_means - global_mean) - reg * bu_k1[user])
+        bu_k1[user] += lr * (err * (user_mean - global_mean) - reg * bu_k1[user])
         bu_c[user] += lr * (err - reg * bu_c[user])
 
-        bi_k1[item] += lr * (err * (item_means - global_mean) - reg * bi_k1[item])
+        bi_k1[item] += lr * (err * (item_mean - global_mean) - reg * bi_k1[item])
         bi_c[item] += lr * (err - reg * bi_c[item])
 
         # Update latent factors
@@ -176,14 +176,14 @@ def _compute_val_metrics(X_val, bu_k1, bu_c, bi_k1, bi_c, pu, qi, global_mean, n
     residuals = []
 
     for i in range(X_val.shape[0]):
-        user, item, rating, user_means, item_means = int(X_val[i, 0]), int(X_val[i, 1]), X_val[i, 2], X_val[i, 3], X_val[i, 4]
+        user, item, rating, user_mean, item_mean = int(X_val[i, 0]), int(X_val[i, 1]), X_val[i, 2], X_val[i, 3], X_val[i, 4]
         pred = global_mean
 
         if user > -1:
-            pred += bu_k1[user] * user_means + bu_c[user]
+            pred += bu_k1[user] * (user_mean - global_mean) + bu_c[user]
 
         if item > -1:
-            pred += bi_k1[item] * item_means + bi_c[item]
+            pred += bi_k1[item] * (item_mean - global_mean) + bi_c[item]
 
         if (user > -1) and (item > -1):
             for factor in range(n_factors):
