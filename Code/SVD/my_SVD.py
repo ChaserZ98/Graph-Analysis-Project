@@ -116,7 +116,7 @@ class my_SVD:
 
     def _init_metrics(self):
         metrics = np.zeros((self.n_epochs, 6), dtype=float)
-        self.metrics_ = pd.DataFrame(metrics, columns=['Train Loss', 'Train RMSE', 'Train MAE', 'Valid loss', 'Valid RMSE', 'Valid MAE'])
+        self.metrics_ = pd.DataFrame(metrics, columns=['Train Loss', 'Train RMSE', 'Train MAE', 'Valid Loss', 'Valid RMSE', 'Valid MAE'])
 
     # todo
     def _run_sgd(self, X, X_val):
@@ -134,6 +134,7 @@ class my_SVD:
         n_items = len(np.unique(X[:, 1]))
 
         bu_k1, bu_c, bi_k1, bi_c, pu, qi = _initialization(n_users, n_items, self.n_factors)
+        # bu_k1, bi_k1, pu, qi = _initialization(n_users, n_items, self.n_factors)
 
         # Run SGD
         for epoch_ix in range(self.n_epochs):
@@ -142,8 +143,23 @@ class my_SVD:
             if self.shuffle:
                 X = _shuffle(X)
 
-            bu_k1, bu_c, bi_k1, bi_c, pu, qi = _run_epoch(X, bu_k1, bu_c, bi_k1, bi_c, pu, qi, self.global_mean_,
-                                        self.n_factors, self.lr, self.reg)
+            bu_k1, bu_c, bi_k1, bi_c, pu, qi = _run_epoch(
+                X,
+                bu_k1, bu_c, bi_k1, bi_c, pu, qi,
+                self.global_mean_,
+                self.n_factors,
+                self.lr,
+                self.reg
+            )
+
+            # bu_k1, bi_k1, pu, qi = _run_epoch(
+            #     X,
+            #     bu_k1, bi_k1, pu, qi,
+            #     self.global_mean_,
+            #     self.n_factors,
+            #     self.lr,
+            #     self.reg
+            # )
             
             self.metrics_.loc[epoch_ix, ['Train Loss', 'Train RMSE', 'Train MAE']] = _compute_val_metrics(
                 X,
@@ -151,6 +167,12 @@ class my_SVD:
                 self.global_mean_,
                 self.n_factors
             )
+            # self.metrics_.loc[epoch_ix, ['Train Loss', 'Train RMSE', 'Train MAE']] = _compute_val_metrics(
+            #     X,
+            #     bu_k1, bi_k1, pu, qi,
+            #     self.global_mean_,
+            #     self.n_factors
+            # )
             
             if X_val is not None:
                 self.metrics_.loc[epoch_ix, ['Valid Loss', 'Valid RMSE', 'Valid MAE']] = _compute_val_metrics(
@@ -159,6 +181,12 @@ class my_SVD:
                     self.global_mean_,
                     self.n_factors
                 )
+                # self.metrics_.loc[epoch_ix, ['Valid Loss', 'Valid RMSE', 'Valid MAE']] = _compute_val_metrics(
+                #     X_val,
+                #     bu_k1, bi_k1, pu, qi,
+                #     self.global_mean_,
+                #     self.n_factors
+                # )
                 self._on_epoch_end(
                     start,
                     train_loss=self.metrics_.loc[epoch_ix, 'Train Loss'],
@@ -175,8 +203,6 @@ class my_SVD:
                     train_rmse=self.metrics_.loc[epoch_ix, 'Train RMSE'],
                     train_mae=self.metrics_.loc[epoch_ix, 'Train MAE']
                 )
-
-            
             
             # Early stopping
             if self.early_stopping:
@@ -242,12 +268,14 @@ class my_SVD:
             u_ix = self.user_mapping_[u_id]
             u_mean = self.user_means_mapping_[u_ix]
             pred += self.bu_k1_[u_ix] * (u_mean - self.global_mean_) + self.bu_c_[u_ix]
+            # pred += self.bu_k1_[u_ix] * (u_mean - self.global_mean_)
 
         if i_id in self.item_mapping_:
             item_known = True
             i_ix = self.item_mapping_[i_id]
             i_mean = self.item_means_mapping_[i_ix]
             pred += self.bi_k1_[i_ix] * (i_mean - self.global_mean_) + self.bi_c_[i_ix]
+            # pred += self.bi_k1_[i_ix] * (i_mean - self.global_mean_)
 
         if user_known and item_known:
             pred += np.dot(self.pu_[u_ix], self.qi_[i_ix])
@@ -300,7 +328,7 @@ class my_SVD:
             Starting time of the current epoch.
         """
         start = time.time()
-        end = '  | \n' if epoch_ix < 9 else ' | \n'
+        end = '  | ' if epoch_ix < 9 else ' | '
         print('Epoch {}/{}'.format(epoch_ix + 1, self.n_epochs), end=end)
 
         return start
@@ -328,13 +356,11 @@ class my_SVD:
             print(f'train_loss: {train_loss:.3f}', end=' - ')
             print(f'train_rmse: {train_rmse:.3f}', end=' - ')
             print(f'train_mae: {train_mae:.3f}', end=' - ')
-            print()
 
         if val_loss is not None:
             print(f'val_loss: {val_loss:.3f}', end=' - ')
             print(f'val_rmse: {val_rmse:.3f}', end=' - ')
             print(f'val_mae: {val_mae:.3f}', end=' - ')
-            print()
         
 
         print(f'took {end - start:.1f} sec')

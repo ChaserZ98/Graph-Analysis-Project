@@ -1,6 +1,6 @@
 from glob import glob
 import numpy as np
-from numba import njit, objmode
+from numba import njit
 
 __all__ = [
     '_compute_val_metrics',
@@ -55,9 +55,11 @@ def _initialization(n_users, n_items, n_factors):
     qi = np.random.normal(0, .1, (n_items, n_factors))
 
     return bu_k1, bu_c, bi_k1, bi_c, pu, qi
+    # return bu_k1, bi_k1, pu, qi
 
 @njit
 def _run_epoch(X, bu_k1, bu_c, bi_k1, bi_c, pu, qi, global_mean, n_factors, lr, reg):
+# def _run_epoch(X, bu_k1, bi_k1, pu, qi, global_mean, n_factors, lr, reg):
     """Runs an epoch, updating model weights (pu, qi, bu, bi).
 
     Parameters
@@ -113,6 +115,7 @@ def _run_epoch(X, bu_k1, bu_c, bi_k1, bi_c, pu, qi, global_mean, n_factors, lr, 
 
         # Predict current rating
         pred = global_mean + bu_k1[user] * (user_mean - global_mean) + bu_c[user] + bi_k1[item] * (item_mean - global_mean) + bi_c[item]
+        # pred = global_mean + bu_k1[user] * (user_mean - global_mean) + bi_k1[item] * (item_mean - global_mean)
 
         for factor in range(n_factors):
             pred += pu[user, factor] * qi[item, factor]
@@ -133,14 +136,13 @@ def _run_epoch(X, bu_k1, bu_c, bi_k1, bi_c, pu, qi, global_mean, n_factors, lr, 
 
             pu[user, factor] += lr * (err * qif - reg * puf)
             qi[item, factor] += lr * (err * puf - reg * qif)
-        
-        with objmode():
-            print(f"{i}/{X.shape[0]}", end = '\r')
 
     return bu_k1, bu_c, bi_k1, bi_c, pu, qi
+    # return bu_k1, bi_k1, pu, qi
 
 @njit
 def _compute_val_metrics(X_val, bu_k1, bu_c, bi_k1, bi_c, pu, qi, global_mean, n_factors):
+# def _compute_val_metrics(X_val, bu_k1, bi_k1, pu, qi, global_mean, n_factors):
     """Computes validation metrics (loss, rmse, and mae).
 
     Parameters
@@ -181,9 +183,11 @@ def _compute_val_metrics(X_val, bu_k1, bu_c, bi_k1, bi_c, pu, qi, global_mean, n
 
         if user > -1:
             pred += bu_k1[user] * (user_mean - global_mean) + bu_c[user]
+            # pred += bu_k1[user] * (user_mean - global_mean)
 
         if item > -1:
             pred += bi_k1[item] * (item_mean - global_mean) + bi_c[item]
+            # pred += bi_k1[item] * (item_mean - global_mean)
 
         if (user > -1) and (item > -1):
             for factor in range(n_factors):
