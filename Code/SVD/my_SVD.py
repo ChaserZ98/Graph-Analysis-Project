@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 import time
 
-from my_fast_methods import _shuffle, _initialization, _run_epoch, _compute_val_metrics
+from my_fast_methods import _shuffle, _initialization, _run_epoch, _run_epoch_mixed, _compute_val_metrics, _compute_val_metrics_mixed
 from utils import _timer
 
 
@@ -10,7 +10,7 @@ from utils import _timer
 class my_SVD:
     def __init__(self, lr=.005, reg=.02, n_epochs=20, n_factors=100,
                  early_stopping=False, shuffle=False, min_delta=.001,
-                 min_rating=1, max_rating=5):
+                 min_rating=1, max_rating=5, mode="rating"):
 
         self.lr = lr
         self.reg = reg
@@ -21,6 +21,8 @@ class my_SVD:
         self.min_delta = min_delta
         self.min_rating = min_rating
         self.max_rating = max_rating
+        self.mode = mode
+        # 2 modes: "rating" → rating only, "mixed" → rating + nlp
 
     @_timer(text='\nTraining took ')
     def fit(self, X, X_val=None):
@@ -40,19 +42,19 @@ class my_SVD:
             The current fitted object.
         """
 
-        X = self._preprocess_data(X)
+        X = self._preprocess_data(X, mode=self.mode)
 
         if X_val is not None:
-            X_val = self._preprocess_data(X_val, train=False, verbose=False)
+            X_val = self._preprocess_data(X_val, train=False, verbose=False, mode=self.mode)
         self._init_metrics()
 
         
         # self.userMean = 
-        self._run_sgd(X, X_val)
+        self._run_sgd(X, X_val, mode=self.mode)
 
         return self
     
-    def _preprocess_data(self, X : pd.DataFrame, train=True, verbose=True):
+    def _preprocess_data(self, X : pd.DataFrame, train=True, verbose=True, mode="rating"):
         """Maps user and item ids to their indexes.
 
         Parameters
@@ -69,7 +71,10 @@ class my_SVD:
             Mapped dataset.
         """
         print('Preprocessing data...\n')
+        
         X = X.copy()
+        if mode == "rating":
+            X = X.iloc[:, 0:3]
 
         if train:  # Mappings have to be created
             user_ids = X.iloc[:, 0].unique().tolist()
@@ -84,7 +89,12 @@ class my_SVD:
             self.user_mapping_ = dict(zip(user_ids, user_idx))
             self.item_mapping_ = dict(zip(item_ids, item_idx))
 
-            self.global_mean_ = np.mean(X.iloc[:, 2])
+            self.global_rating_mean_ = np.mean(X.iloc[:, 2])
+
+            if mode == "mixed":
+                self.global_nlp_mean_ = np.mean(X[X.iloc[:, 3] > 0].iloc[:, 3])
+                # X[X.iloc[:, 3] == -1].iloc[:, 3] = self.global_nlp_mean_
+                X.iloc[list(X.iloc[:, 3] == -1), 3] = self.global_nlp_mean_
 
         X.iloc[:, 0] = X.iloc[:, 0].map(self.user_mapping_)
         X.iloc[:, 1] = X.iloc[:, 1].map(self.item_mapping_)
@@ -99,27 +109,42 @@ class my_SVD:
         if train:
             user_idx = X.iloc[:, 0].unique().tolist()
             item_idx = X.iloc[:, 1].unique().tolist()
-            
-            user_means = X.groupby(X.columns[0], as_index=False).mean().iloc[:, 2].to_list()
-            item_means = X.groupby(X.columns[1], as_index=False).mean().iloc[:, 2].to_list()
 
-            self.user_means_mapping_ = dict(zip(user_idx, user_means))
-            self.item_means_mapping_ = dict(zip(item_idx, item_means))
+            user_rating_means = X.groupby(X.columns[0], as_index=False).mean().iloc[:, 2].to_list()
+            item_rating_means = X.groupby(X.columns[1], as_index=False).mean().iloc[:, 2].to_list()
+
+            self.user_rating_means_mapping_ = dict(zip(user_idx, user_rating_means))
+            self.item_rating_means_mapping_ = dict(zip(item_idx, item_rating_means))
+
+            if mode == "mixed":
+                user_nlp_means = X.groupby(X.columns[0], as_index=False).mean().iloc[:, 3].to_list()
+                item_nlp_means = X.groupby(X.columns[1], as_index=False).mean().iloc[:, 3].to_list()
+
+                self.user_nlp_means_mapping_ = dict(zip(user_idx, user_nlp_means))
+                self.item_nlp_means_mapping_ = dict(zip(item_idx, item_nlp_means))
         
-        X["user_mean"] = X.iloc[:, 0].map(self.user_means_mapping_)
-        X["item_mean"] = X.iloc[:, 1].map(self.item_means_mapping_)
+        X["user_rating_mean"] = X.iloc[:, 0].map(self.user_rating_means_mapping_)
+        X["item_rating_mean"] = X.iloc[:, 1].map(self.item_rating_means_mapping_)
 
         # Tag validation set unknown users/items mean with global mean
-        X.fillna(self.global_mean_, inplace=True)
+        X.fillna(self.global_rating_mean_, inplace=True)
 
-        return X.iloc[:, 0:5].values
+        if mode == "mixed":
+            X["user_nlp_mean"] = X.iloc[:, 0].map(self.user_nlp_means_mapping_)
+            X["item_nlp_mean"] = X.iloc[:, 1].map(self.item_nlp_means_mapping_)
+            X.fillna(self.global_nlp_mean_, inplace=True)
+        
+        if mode == "mixed":
+            return X.iloc[:, [0, 1, 2, 4, 5, 6, 7]].values
+        else:
+            return X.iloc[:, :5].values
 
     def _init_metrics(self):
         metrics = np.zeros((self.n_epochs, 6), dtype=float)
         self.metrics_ = pd.DataFrame(metrics, columns=['Train Loss', 'Train RMSE', 'Train MAE', 'Valid Loss', 'Valid RMSE', 'Valid MAE'])
 
     # todo
-    def _run_sgd(self, X, X_val):
+    def _run_sgd(self, X, X_val, mode="rating"):
         """Runs SGD algorithm, learning model weights.
 
         Parameters
@@ -133,8 +158,10 @@ class my_SVD:
         n_users = len(np.unique(X[:, 0]))
         n_items = len(np.unique(X[:, 1]))
 
-        bu_k1, bu_c, bi_k1, bi_c, pu, qi = _initialization(n_users, n_items, self.n_factors)
-        # bu_k1, bi_k1, pu, qi = _initialization(n_users, n_items, self.n_factors)
+        if mode == "rating":
+            bu_k1, _, bu_c, bi_k1, _, bi_c, pu, qi = _initialization(n_users, n_items, self.n_factors)
+        else:
+            bu_k1, bu_k2, bu_c, bi_k1, bi_k2, bi_c, pu, qi = _initialization(n_users, n_items, self.n_factors)
 
         # Run SGD
         for epoch_ix in range(self.n_epochs):
@@ -142,51 +169,56 @@ class my_SVD:
 
             if self.shuffle:
                 X = _shuffle(X)
-
-            bu_k1, bu_c, bi_k1, bi_c, pu, qi = _run_epoch(
-                X,
-                bu_k1, bu_c, bi_k1, bi_c, pu, qi,
-                self.global_mean_,
-                self.n_factors,
-                self.lr,
-                self.reg
-            )
-
-            # bu_k1, bi_k1, pu, qi = _run_epoch(
-            #     X,
-            #     bu_k1, bi_k1, pu, qi,
-            #     self.global_mean_,
-            #     self.n_factors,
-            #     self.lr,
-            #     self.reg
-            # )
             
-            self.metrics_.loc[epoch_ix, ['Train Loss', 'Train RMSE', 'Train MAE']] = _compute_val_metrics(
-                X,
-                bu_k1, bu_c, bi_k1, bi_c, pu, qi,
-                self.global_mean_,
-                self.n_factors
-            )
-            # self.metrics_.loc[epoch_ix, ['Train Loss', 'Train RMSE', 'Train MAE']] = _compute_val_metrics(
-            #     X,
-            #     bu_k1, bi_k1, pu, qi,
-            #     self.global_mean_,
-            #     self.n_factors
-            # )
+            if mode == 'rating':
+                bu_k1, bu_c, bi_k1, bi_c, pu, qi = _run_epoch(
+                    X,
+                    bu_k1, bu_c, bi_k1, bi_c, pu, qi,
+                    self.n_factors,
+                    self.global_rating_mean_,
+                    self.lr,
+                    self.reg
+                )
+                self.metrics_.loc[epoch_ix, ['Train Loss', 'Train RMSE', 'Train MAE']] = _compute_val_metrics(
+                    X,
+                    bu_k1, bu_c, bi_k1, bi_c, pu, qi,
+                    self.n_factors,
+                    self.global_rating_mean_
+                )
+            elif mode == "mixed":
+                bu_k1, bu_k2, bu_c, bi_k1, bi_k2, bi_c, pu, qi = _run_epoch_mixed(
+                    X,
+                    bu_k1, bu_k2, bu_c, bi_k1, bi_k2, bi_c, pu, qi,
+                    self.n_factors,
+                    self.global_rating_mean_,
+                    self.global_nlp_mean_,
+                    self.lr,
+                    self.reg
+                )
+                self.metrics_.loc[epoch_ix, ['Train Loss', 'Train RMSE', 'Train MAE']] = _compute_val_metrics_mixed(
+                    X,
+                    bu_k1, bu_k2, bu_c, bi_k1, bi_k2, bi_c, pu, qi,
+                    self.n_factors,
+                    self.global_rating_mean_,
+                    self.global_nlp_mean_
+                )
             
             if X_val is not None:
-                self.metrics_.loc[epoch_ix, ['Valid Loss', 'Valid RMSE', 'Valid MAE']] = _compute_val_metrics(
-                    X_val,
-                    bu_k1, bu_c, bi_k1, bi_c, pu, qi,
-                    self.global_mean_,
-                    self.n_factors
-                )
-                # self.metrics_.loc[epoch_ix, ['Valid Loss', 'Valid RMSE', 'Valid MAE']] = _compute_val_metrics(
-                #     X_val,
-                #     bu_k1, bi_k1, pu, qi,
-                #     self.global_mean_,
-                #     self.n_factors
-                # )
+                if mode == "rating":
+                    self.metrics_.loc[epoch_ix, ['Valid Loss', 'Valid RMSE', 'Valid MAE']] = _compute_val_metrics(
+                        X_val,
+                        bu_k1, bu_c, bi_k1, bi_c, pu, qi,
+                        self.n_factors,
+                        self.global_rating_mean_
+                    )
+                else:
+                    self.metrics_.loc[epoch_ix, ['Valid Loss', 'Valid RMSE', 'Valid MAE']] = _compute_val_metrics_mixed(
+                        X_val,
+                        bu_k1, bu_k2, bu_c, bi_k1, bi_k2, bi_c, pu, qi,
+                        self.n_factors,
+                        self.global_rating_mean_,
+                        self.global_nlp_mean_
+                    )
                 self._on_epoch_end(
                     start,
                     train_loss=self.metrics_.loc[epoch_ix, 'Train Loss'],
@@ -221,6 +253,9 @@ class my_SVD:
         self.bi_c_ = bi_c
         self.pu_ = pu
         self.qi_ = qi
+        if mode == "mixed":
+            self.bu_k2_ = bu_k2
+            self.bi_k2_ = bi_k2
     
     def predict(self, X, clip=True):
         """Returns estimated ratings of several given user/item pairs.
@@ -243,7 +278,7 @@ class my_SVD:
             for u_id, i_id in zip(X.iloc[:, 0], X.iloc[:, 1])
         ]
     
-    def predict_pair(self, u_id, i_id, clip=True):
+    def predict_pair(self, u_id, i_id, clip=True, mode="rating"):
         """Returns the model rating prediction for a given user/item pair.
 
         Parameters
@@ -261,21 +296,34 @@ class my_SVD:
             The estimated rating for the given user/item pair.
         """
         user_known, item_known = False, False
-        pred = self.global_mean_
+        pred = self.global_rating_mean_
 
-        if u_id in self.user_mapping_:
-            user_known = True
-            u_ix = self.user_mapping_[u_id]
-            u_mean = self.user_means_mapping_[u_ix]
-            pred += self.bu_k1_[u_ix] * (u_mean - self.global_mean_) + self.bu_c_[u_ix]
-            # pred += self.bu_k1_[u_ix] * (u_mean - self.global_mean_)
+        if mode == "rating":
+            if u_id in self.user_mapping_:
+                user_known = True
+                u_ix = self.user_mapping_[u_id]
+                u_rating_mean = self.user_rating_means_mapping_[u_ix]
+                pred += self.bu_k1_[u_ix] * (u_rating_mean - self.global_rating_mean_) + self.bu_c_[u_ix]
 
-        if i_id in self.item_mapping_:
-            item_known = True
-            i_ix = self.item_mapping_[i_id]
-            i_mean = self.item_means_mapping_[i_ix]
-            pred += self.bi_k1_[i_ix] * (i_mean - self.global_mean_) + self.bi_c_[i_ix]
-            # pred += self.bi_k1_[i_ix] * (i_mean - self.global_mean_)
+            if i_id in self.item_mapping_:
+                item_known = True
+                i_ix = self.item_mapping_[i_id]
+                i_rating_mean = self.item_rating_means_mapping_[i_ix]
+                pred += self.bi_k1_[i_ix] * (i_rating_mean - self.global_rating_mean_) + self.bi_c_[i_ix]
+        else:
+            if u_id in self.user_mapping_:
+                user_known = True
+                u_ix = self.user_mapping_[u_id]
+                u_rating_mean = self.user_rating_means_mapping_[u_ix]
+                u_nlp_mean = self.user_nlp_means_mapping_[u_ix]
+                pred += self.bu_k1_[u_ix] * (u_rating_mean - self.global_rating_mean_) + self.bu_k2_[u_ix] * (u_nlp_mean - self.global_nlp_mean_) + self.bu_c_[u_ix]
+
+            if i_id in self.item_mapping_:
+                item_known = True
+                i_ix = self.item_mapping_[i_id]
+                i_rating_mean = self.item_rating_means_mapping_[i_ix]
+                i_nlp_mean = self.item_nlp_means_mapping_[i_ix]
+                pred += self.bi_k1_[i_ix] * (i_rating_mean - self.global_rating_mean_) + self.bi_k2_[i_ix] * (i_nlp_mean - self.global_nlp_mean_) + self.bi_c_[i_ix]
 
         if user_known and item_known:
             pred += np.dot(self.pu_[u_ix], self.qi_[i_ix])
